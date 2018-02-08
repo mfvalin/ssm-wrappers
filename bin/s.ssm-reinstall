@@ -1,0 +1,12 @@
+#!/bin/bash
+Target=${1:-ienapa}
+[[ -d $Target ]] || { echo ERROR $Target not a directory ; exit 1 ; }
+if [[ "${Target}" == *_*_* ]] ; then
+ s.ssm-unpublish $Target -y
+ s.ssm-uninstall $Target -y
+ s.ssm-install $Target -y
+ [[ "$2" == pub* ]] && s.ssm-publish $Target -y
+else
+  echo ERROR, ${Target} not a valid package name
+  exit 1
+fi

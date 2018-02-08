@@ -1,0 +1,7 @@
+#!/bin/ksh
+[[ "$1" = -h || "$1" = -help ]] && echo 'usage: r.ssm-publish package_name [extra ssm arguments (no -d domain)] ' && exit 0
+set -x
+ssm publish -d `readlink -e .` -p "$@"
+echo publishing ${1} in $(pwd -P) and fixing cache for ${BASE_ARCH}
+s.ssm-fixcache
+

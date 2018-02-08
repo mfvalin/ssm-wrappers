@@ -1,0 +1,28 @@
+#!/bin/ksh
+if [[ "$1" = "-f" ]] ; then   # fake install, tar directory, remove it and install from tar copy
+  shift
+  [[ -d "$1" ]] || { echo " '$1' not found" && exit 1 ; }
+  [[ -r ./etc/ssm.d/installed/${1} ]] && echo " '$1' is already installed" && exit 1
+  if [[ -x /usr/bin/gtar ]] ; then
+#    gtar zcf $TMPDIR/${1}.ssm ${1} && rm -rf ${1} && ssm install -d `readlink -e .` -p ${1} -u $TMPDIR -y && rm -f $TMPDIR/${1}.ssm
+    gtar zcf $TMPDIR/${1}.ssm ${1} && rm -rf ${1} && ssm install -d `readlink -e .` -f $TMPDIR/${1}.ssm -p ${1} && rm -f $TMPDIR/${1}.ssm
+  else
+#    tar zcf $TMPDIR/${1}.ssm ${1} && rm -rf ${1} && ssm install -d `readlink -e .` -p ${1} -u $TMPDIR -y && rm -f $TMPDIR/${1}.ssm
+    tar zcf $TMPDIR/${1}.ssm ${1} && rm -rf ${1} && ssm install -d `readlink -e .` -p ${1} -f $TMPDIR/${1}.ssm  && rm -f $TMPDIR/${1}.ssm
+  fi
+#  rm -f $TMPDIR/${1}.ssm
+  echo FAKE install of package $1 in domain $(readlink -e .)
+else
+  if [[ -f "$1" ]] ; then
+    Package=${1##*/}
+    Package=${Package%.ssm}
+    RepUrl="`readlink -e $1`"
+    RepUrl="${RepUrl%/*}"
+    shift
+    echo ssm install -d `readlink -e .` -p "$Package" -u "$RepUrl" "$@"
+    ssm install -d `readlink -e .` -p "$Package" -u "$RepUrl" "$@"
+  else
+    echo ssm install -d `readlink -e .` -p "$@"
+    ssm install -d `readlink -e .` -p "$@"
+  fi
+fi

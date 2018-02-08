@@ -1,0 +1,31 @@
+#!/bin/ksh
+#
+# tar a package and put it in the repository
+#
+[[ "$1" = -h || "$1" = --help ]] && echo "usage: ${0##*/} [-d path_to_domain] [-D] package_version_platform" && exit 0
+MyDomain=.
+if [[ "$1" = '-D' ]] ; then MyDomain=$(pwd) ; shift 1 ; fi
+if [[ "$1" = '-d' ]] ; then MyDomain=${2:-$MyDomain} ; shift 2 ; fi
+[[ -d "$MyDomain" ]] || { echo "ERROR: cannot find domain '$MyDomain'" ; exit 1 ; }
+MyDomain=$(readlink -e $MyDomain) || { echo "ERROR: cannot resolve path to domain" ; exit 1 ; }
+if [[ ! -d ${MyDomain}/etc/ssm.d ]] ; then echo  $MyDomain does not exist or is not a domain ; exit 1 ; fi
+cd ${MyDomain}
+[[ -d ${1:-does_not_exist_at_all} ]] || { echo "ERROR: package ${1} not found" && exit 1 ; }
+[[ -d ${1}/.ssm.d ]] || { echo "ERROR: ${1} is not a package" && exit 1 ; }
+# find repository
+SsmDepot=$(s.ssm-depot) || exit 1
+#[[ -f etc/ssm.d/sources.list ]] && SsmDepot=$(grep -v http etc/ssm.d/sources.list | head -1)
+#test -f .SsmDepot && SsmDepot=$(cat .SsmDepot)
+#[[ -d ${SsmDepot} ]] || { echo "ERROR: no depot found in domain $(pwd -P) " && exit 1 ; }
+#
+package=${1}
+echo package=$package repository=${SsmDepot}
+TarCmd="echo tar"
+tar --help 1>/dev/null 2>/dev/null && TarCmd=tar
+gtar --help 1>/dev/null 2>/dev/null && TarCmd=gtar
+gnutar --help 1>/dev/null 2>/dev/null && TarCmd=gnutar
+set -x
+[[ -f ${package}/maint/include ]] || echo ${package} > ${package}/maint/include
+[[ -f ${package}/maint/excludes ]] || touch ${package}/maint/excludes
+[[ -f ${package}/maint/excludes.list ]] || touch ${package}/maint/excludes.list
+${TarCmd} $(cat ${package}/maint/excludes) --exclude-tag=.ignore --exclude-from=${package}/maint/excludes.list -zcf ${SsmDepot}/${package}.ssm $(cat ${package}/maint/include)

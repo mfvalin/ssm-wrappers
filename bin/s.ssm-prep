@@ -1,0 +1,67 @@
+#!/bin/ksh
+#
+# prepare the skeleton of a package for ssm
+#
+[[ "$1" = -h || "$1" = --help ]] && echo 'usage: s.ssm-prep [-d path_to_domain] [-D] package_version_platform' && exit 0
+set -x
+MyDomain=$HOME_ECssm
+if [[ "$1" = '-D' ]] ; then MyDomain=$(pwd -P) ; shift 1 ; fi
+if [[ "$1" = '-d' ]] ; then MyDomain=${2:-$MyDomain} ; shift 2 ; fi
+MyDomain=$(readlink -e $MyDomain)
+if [[ ! -d $MyDomain ]] ; then echo  $MyDomain does not exist ; exit 1 ; fi
+cd ${MyDomain}
+MyPackage=${1:-demo-package_1.0_all}
+for TarGet in maint bin lib include share 
+do
+  mkdir -p ${MyDomain}/${MyPackage}/${TarGet}
+done
+echo CREATING package ${MyPackage} in domain ${MyDomain}
+s.ssmprep --basePath ${MyDomain}/${MyPackage} -p ${MyPackage} --editorPath /bin/echo
+#
+# create make-ssm
+#
+echo --exclude do_not_tar --exclude-tag=.ignore > ${MyPackage}/maint/excludes
+echo ${MyPackage}/. >${MyPackage}/maint/include
+echo do_not_tar >${MyPackage}/maint/excludes.list
+cat >> ${MyPackage}/maint/make-ssm  <<EOT
+#!/bin/bash
+SsmDepot=.
+test -f .SsmDepot && SsmDepot=\$(cat .SsmDepot)
+package=\${0#./}
+package=\${package%%/*}
+echo package=\$package
+TarCmd="echo tar"
+tar --help 1>/dev/null 2>/dev/null && TarCmd=tar
+gtar --help 1>/dev/null 2>/dev/null && TarCmd=gtar
+gnutar --help 1>/dev/null 2>/dev/null && TarCmd=gnutar
+set -x
+\${TarCmd} \$(cat ${MyPackage}/maint/excludes) --exclude-from=${MyPackage}/maint/excludes.list -zcf \${SsmDepot}/\${package}.ssm \$(cat ${MyPackage}/maint/include)
+EOT
+chmod 755 ${MyPackage}/maint/make-ssm
+#
+# create pre-publish
+#
+cat >> ${MyPackage}/.ssm.d/pre-publish  <<EOT
+#!/bin/bash
+domainHome=\$1
+packageHome=\$2
+profileDirPath=\${packageHome}/etc/profile.d
+packageName=\${packageHome##*/}
+profilePath=\${profileDirPath}/\${packageName}.sh
+mkdir -p \${profileDirPath}
+#echo "#\${packageName%%_*}_HOME=\${packageHome}" >> \${profilePath}
+EOT
+chmod 755  ${MyPackage}/.ssm.d/pre-publish
+#
+# create post-install and others
+#
+for Target in post-install post-publish pre-uninstall pre-unpublish post-unpublish 
+do
+  cp ${MyPackage}/.ssm.d/pre-publish ${MyPackage}/.ssm.d/${Target}
+done
+echo '.*/[.]svn$' >${MyPackage}/.ssm.d/exclude
+echo '.*/[.]git$' >>${MyPackage}/.ssm.d/exclude
+chmod 755  ${MyPackage}/.ssm.d/p*
+#
+echo do not forget: vi ${MyPackage}/.ssm.d/control
+echo do not forget: chmod 755 ${MyPackage}/maint/make-ssm after adjusting it

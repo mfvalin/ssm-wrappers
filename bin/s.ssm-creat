@@ -1,0 +1,30 @@
+#!/bin/ksh
+#
+# create a domain
+#
+# usage: r.ssm-creat [-d path_to_domain] [-D] [-r path_to_repository] 
+#
+[[ "$1" = -h || "$1" = -help || "$1" = --help ]] && echo 'usage: r.ssm-creat [-d path_to_domain] [-D] [-r path_to_repository] ' && exit 0
+## temporary patch domains must be created with 8.8 or above for SSM_INCLUDE_PATH to work
+##
+#. s.ssmuse.dot ssm_8.8
+##
+MyDomain=/dev/null
+if [[ "$1" = '-D' ]] ; then MyDomain=$(pwd) ; shift 1 ; fi
+if [[ "$1" = '-d' ]] ; then MyDomain=${2:-$MyDomain} ; mkdir -p ${2:-$MyDomain} ; shift 2 ; fi
+if [[ ! -d $MyDomain ]] ; then echo " Domain directory '$MyDomain' does not exist" ; exit 1 ; fi
+MyDomain=$(readlink -e $MyDomain)
+MyRepository=/dev/null
+test -d ~/.SsmDepot && MyRepository=$(readlink -e ~/.SsmDepot)
+if [[ "$1" = '-r' ]] ; then MyRepository=${2:-$MyRepository} ; mkdir -p ${2:-$MyRepository} ; shift 2 ; fi
+if [[ ! -d $MyRepository ]] ; then echo " Repository directory '$MyRepository' does not exist" ; exit 1 ; fi
+if [[ -f $MyDomain/etc/ssm.d/sources.list ]] ; then
+  echo will refresh Domain $MyDomain
+  ssm created -d $MyDomain --sources "`cat $MyDomain/etc/ssm.d/sources.list`"
+else
+  echo will create Domain $MyDomain with Repository $MyRepository
+  ssm created -d $MyDomain --sources "$MyRepository"
+  cd $MyDomain
+  echo "$MyRepository" >.SsmDepot
+  [[ -n "${SSM_WEB}" ]] && printf "\nhttp://scaweb.sca.uqam.ca/armnlib/repository/" >>$MyDomain/etc/ssm.d/sources.list
+fi

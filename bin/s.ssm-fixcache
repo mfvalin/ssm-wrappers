@@ -1,0 +1,13 @@
+#!/bin/bash
+#
+[[ -d etc/ssm.d/installed ]] || { echo ERROR: not in a domain in $(pwd -P) ; exit 1 ; }
+#
+which ssmuse-sh 2>/dev/null 1>/dev/null && SSMUSE_SH="ssmuse-sh"
+if [[ -n $SSMUSE_SH ]] ; then
+  ssmuse-sh --noeval -d $(pwd -P) >cache.${BASE_ARCH}+  
+  mv cache.${BASE_ARCH}+ cache.${BASE_ARCH}
+else
+  ssmuse sh -d $(pwd -P) >cache.${BASE_ARCH}+ ; mv cache.${BASE_ARCH}+ cache.${BASE_ARCH}
+fi
+ls -la cache.${BASE_ARCH}
+

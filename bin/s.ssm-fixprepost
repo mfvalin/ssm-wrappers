@@ -1,0 +1,12 @@
+#!/bin/bash
+filetofix=${1:-does_not_exist}
+[[ -w ${filetofix} ]] || exit 1
+head -1 ${filetofix} | grep '^#!/bin' >/dev/null && echo ${0##*/} : no need to fix ${filetofix} && exit 0
+ed ${filetofix} <<EOT 2>/dev/null >/dev/null
+g/^#!\/bin\/ksh/d
+1i
+#!/bin/ksh
+.
+wq
+EOT
+echo ${0##*/} : file ${filetofix} has been fixed

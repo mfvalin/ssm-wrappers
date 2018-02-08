@@ -1,0 +1,150 @@
+#! /bin/bash
+#
+# ssmprep --basePath <path> -p|--packageName <packageName> [--editor <path>]
+#
+# prepare basic directories and files used for ssm
+# packaging
+#
+
+# GPL--start
+# This file is part of ssm (Simple Software Manager)
+# Copyright (C) 2005-2010 Environment/Environnement Canada
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; version 2
+# of the License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# GPL--end
+
+printUsage() {
+	echo "\
+usage: ssmprep --basePath <path> -p|--packageName <packageName>
+               [--editorPath <path>]
+
+Create and prepare directories and files needed for ssm packages.
+
+Directories:
+    ${relDirPaths}
+
+Files:
+    ${relFilePaths}"
+}
+
+setup() {
+	# directories to create
+	relDirPaths=".ssm.d
+		etc
+		etc/profile.d"
+
+	# files to create/touch
+	relFilePaths=".ssm.d/control
+		.ssm.d/pre-install
+		.ssm.d/post-install
+		.ssm.d/pre-uninstall
+		.ssm.d/post-uninstall
+		.ssm.d/pre-publish
+		.ssm.d/post-publish
+		.ssm.d/pre-unpublish
+		.ssm.d/post-unpublish
+		etc/profile.d/${packageName}.sh
+		etc/profile.d/${packageName}.csh"
+    
+	# templates
+	controlTemplate="Package: `echo ${packageName} | cut -d'_' -f1`
+Version: `echo ${packageName} | \cut -d'_' -f2`
+Platform:
+Maintainer: `whoami`
+BuildInfo:
+Description:
+"
+}
+
+# parse command line options
+basePath="$(pwd -P)"
+editorPath="echo"
+packageName="<packageName>"
+leaveEmpties="no"
+setup
+while [ $# -gt 0 ]; do
+	if [ "$1" = "--basePath" ]; then
+		shift 1
+		basePath="$1"; shift 1
+	elif [ "$1" = "--editorPath" ]; then
+		shift 1
+		editorPath="$1"; shift 1
+	elif [ "$1" = "-p" -o $1 = "--packageName" ]; then
+		shift 1
+		packageName=$1; shift 1
+	elif [ "$1" = "--leaveEmpties" ]; then
+		shift 1
+		leaveEmpties="yes"
+	elif [ "$1" = "-h" -o $1 = "--help" ]; then
+		printUsage
+		exit 1
+	else
+		printUsage
+		exit 1
+	fi
+done
+
+if [[ ! -d  "${basePath}" ]]; then
+	echo "Error: Missing basePath '${basePath}'."
+	echo
+	printUsage
+	exit 1
+fi
+
+if [ "${packageName}" = "<packageName>" ]; then
+	echo "Error: Missing package name."
+	echo
+	printUsage
+	exit 1
+fi
+
+setup
+
+# create directories
+for relDirPath in ${relDirPaths}; do
+	dirPath=${basePath}/${relDirPath}
+	echo "Creating directory: ${dirPath}"
+	\mkdir -p ${dirPath}
+done
+
+# set up files
+filePaths=""
+for relFilePath in ${relFilePaths}; do
+	# create files
+	filePath=${basePath}/${relFilePath}
+	\touch ${filePath}
+	\chmod a+x ${filePath}
+
+	# insert default info if new/empty
+	if [ ! -s ${filePath} ]; then
+		case ${relFilePath} in
+		".ssm.d/control")
+			echo "${controlTemplate}" >> ${filePath}
+			;;
+		esac
+	fi
+	filePaths="${filePaths} ${filePath}"
+
+	# edit files
+	${editorPath} ${filePath}
+
+	# remove empty files if requested
+	if [ $leaveEmpties = "no" ]; then
+		if [ ! -s ${filePath} ]; then
+			\rm -f ${filePath}
+		fi
+	fi
+done
+

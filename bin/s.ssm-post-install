@@ -1,0 +1,7 @@
+#!/bin/bash
+Package=${1:-Ie_pa_la}
+[[ -d ${Package}/.ssm.d ]] || { echo "ERROR: '${Package}' not a valid domain" ; exit 1 ; }
+Package=$(true_path ${Package})
+Domain=${Package%/*}
+[[ -x ${Package}/.ssm.d/${0##*s.ssm-} ]] || { echo "ERROR: ${0##*s.ssm-} does not exist or in not executable for ${Package##*/}" ; exit 1 ; }
+echo ${Package}/.ssm.d/${0##*s.ssm-} ${Domain} ${Package}

@@ -1,0 +1,4 @@
+#!/bin/ksh
+[[ "$1" = -h || "$1" = -help ]] && echo 'usage: r.ssm-uninstall package_name [extra ssm arguments (no -d domain)] ' && exit 0
+set -x
+ssm uninstall -d `true_path .` -p "$@"
